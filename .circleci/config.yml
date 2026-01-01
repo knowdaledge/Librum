@@ -1,0 +1,53 @@
+version: 2.1
+
+jobs:
+  build-macos:
+    macos:
+      xcode: "14.2.0"   # macOS executor with Xcode; adjust version if needed
+    environment:
+      CMAKE_BUILD_TYPE: Release
+    steps:
+      - checkout
+
+      # Install prerequisites via Homebrew
+      - run:
+          name: Install dependencies
+          command: |
+            brew update
+            brew install cmake make gcc python3
+            brew install qt@6
+
+      # Configure build directory
+      - run:
+          name: Configure CMake
+          command: |
+            mkdir build-Release
+            cd build-Release
+            cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DBUILD_TESTS=Off \
+                  -DCMAKE_PREFIX_PATH=$(brew --prefix qt@6) ..
+
+      # Build project
+      - run:
+          name: Build Librum
+          command: |
+            cd build-Release
+            cmake --build . -j$(sysctl -n hw.ncpu)
+
+      # Install project
+      - run:
+          name: Install Librum
+          command: |
+            cd build-Release
+            sudo cmake --install .
+
+      # Store compiled binaries as artifacts
+      - store_artifacts:
+          path: build-Release/bin
+          destination: librum-bin
+
+workflows:
+  build-workflow:
+    jobs:
+      - build-macos
